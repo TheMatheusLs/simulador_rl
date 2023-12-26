@@ -4,6 +4,8 @@ np.random.seed(42)
 from OpticalSimFasterEnv.Topology.NSFNet import NSFNet
 from OpticalSimFasterEnv.SpectrumAssignment import RSA_FirstFit, SAR_FistFit
 
+RSA_ACTION, SAR_ACTION = 0, 1
+
 import gymnasium as gym
 from gymnasium import spaces
 
@@ -23,16 +25,13 @@ class Demand:
         self.arrival_time = simulation_time
         self.departure_time = departure_time
 
-
     def deallocate(self, network):
         network.deallocate_slots(self.route, self.slots)
         self.slots = []
-        
-
 
 class Enviroment(gym.Env):
     def __init__(self, network_load, k_routes, number_of_slots = 64) -> None:
-        
+
         self.number_of_slots = number_of_slots
         self.network_load = network_load
         self.k_routes = k_routes
@@ -49,22 +48,27 @@ class Enviroment(gym.Env):
                     print(f"Routes from {str(i).zfill(2)} to {str(j).zfill(2)}:", self.allRoutes[i][j])
 
 
-        self.number_of_nodes = self.network.get_num_of_nodes()
+        self.nbr_nodes = self.network.get_num_of_nodes()
 
         self.random_generator = np.random.default_rng(42)
 
-        # Define o espaço de ações para a saída do algoritmo. Como nosso estado de ação é 0 e 1. Usamos o Discrete(2) para definir o espaço de ações
-        self.action_space = spaces.Discrete(2)
+        # Define o espaço de ações para a saída do algoritmo. Como
+        # nosso estado de ação é 0 e 1. Usamos o Discrete(2) para
+        # definir o espaço de ações.
+        # O ATRIBUTO ABAIXO APARENTEMENTE NÃO ESTÁ SENDO USADO NO
+        # MOMENTO, E POR ISSO ESTÁ COMENTADO
+        # self.action_space = spaces.Discrete(2)
 
-        self.observation_space = spaces.MultiBinary(self.number_of_nodes * 2 + self.number_of_slots * 42, seed=42)
+        # O ATRIBUTO ABAIXO APARENTEMENTE NÃO ESTÁ SENDO USADO NO
+        # MOMENTO, E POR ISSO ESTÁ COMENTADO
+        # self.observation_space = spaces.MultiBinary(self.nbr_nodes * 2 + self.number_of_slots * 42, seed=42)
 
-        # Cria um mapa de codificação para os estados de origem e destino em one hot encoding
-        self.source_destination_map = np.eye(self.number_of_nodes)
+        # Cria um mapa de codificação para os estados de origem e
+        # destino em one hot encoding
+        self.source_destination_map = np.eye(self.nbr_nodes)
 
         self.reward_episode = 0
         self.reward_by_step = []
-
-
 
     def reset(self, seed = 42, options = None):
         self.reward_by_step.append(self.reward_episode)
@@ -78,9 +82,10 @@ class Enviroment(gym.Env):
         self.total_number_of_blocks = 0
         self.last_request = 0
 
-        # Gera uma matriz aleatória para cada par origem-destino com as ações
-        random_start_actions = self.random_generator.integers(0, 2, size=(self.number_of_nodes, self.number_of_nodes))
-
+        # Gera uma matriz aleatória para cada par origem-destino
+        # com as ações
+        random_start_actions = self.random_generator.integers(0, 2,
+                            size=(self.nbr_nodes, self.nbr_nodes))
 
         # Lista para armazenar as demandas ativas na rede
         self.list_of_demands = []
@@ -88,11 +93,11 @@ class Enviroment(gym.Env):
         return self.get_observation(), {}
 
     def get_source_destination(self):
-        source = self.random_generator.integers(0, self.number_of_nodes)
-        destination = self.random_generator.integers(0, self.number_of_nodes)
+        source = self.random_generator.integers(0, self.nbr_nodes)
+        destination = self.random_generator.integers(0, self.nbr_nodes)
         while source == destination:
-            destination = self.random_generator.integers(0, self.number_of_nodes)
-        
+            destination = self.random_generator.integers(0, self.nbr_nodes)
+
         return source, destination
 
 
@@ -101,14 +106,15 @@ class Enviroment(gym.Env):
         source, destination = self.source, self.destination
 
         self.isAvailableSlots = False
-        
+
         # Remove as demandas que expiraram
         for demand in self.list_of_demands:
             if demand.departure_time <= self.simulation_time:
                 demand.deallocate(self.network)
                 self.list_of_demands.remove(demand)
 
-        # Adiciona um incremento ao tempo de simulacao conforme a carga da rede
+        # Adiciona um incremento ao tempo de simulacao conforme a
+        # carga da rede
         self.simulation_time += self.random_generator.exponential(1/self.network_load)
 
         # Sorteia uma demanda de slots entre [2,3,6]
@@ -120,14 +126,17 @@ class Enviroment(gym.Env):
         elif action == 1:
             route, slots = SAR_FistFit.find_slots( self.network.get_all_optical_links(), self.allRoutes[source][destination], demand_class)
 
-        # Calcula o tempo de partida da demanda (tempo atual + tempo de duração da demanda)
-        departure_time = self.simulation_time + exponencial(1, np.random)
+        # Calcula o tempo de partida da demanda (tempo atual + tempo
+        # de duração da demanda)
+        departure_time = self.simulation_time + \
+            exponencial(1, np.random)
 
         # Verifica se o conjunto de slots é diferente de vazio
         if slots.size != 0:
             self.isAvailableSlots = True
 
-            # Cria a demanda e seus atributos para serem utilizados na alocação
+            # Cria a demanda e seus atributos para serem utilizados
+            # na alocação
             demand = Demand(self.last_request, demand_class, slots, route, self.simulation_time, departure_time)
 
             self.list_of_demands.append(demand)
@@ -141,10 +150,18 @@ class Enviroment(gym.Env):
 
         self.last_request += 1
 
-        self.reward_episode += +1 if self.isAvailableSlots else -1
+        self.reward_episode = 2*self.isAvailableSlots - 1
 
-        return self.get_observation(), +1 if self.isAvailableSlots else -1, not self.isAvailableSlots, False, {}
+        return self.get_observation(), self.reward_episode, \
+            not self.isAvailableSlots, False, {}
 
+    @staticmethod
+    def code_nodes(src, dest):
+        return (src & 0xFF) + ((dest & 0xFF) << 8)
+
+    @staticmethod
+    def decode_nodes(coded_nodes):
+        return (coded_nodes & 0xFF, (coded_nodes >> 8) & 0xFF)
 
     def get_observation(self):
 
@@ -153,10 +170,14 @@ class Enviroment(gym.Env):
         self.source = source
         self.destination = destination
 
-        return np.concatenate([self.source_destination_map[source], self.source_destination_map[destination], self.network.get_all_optical_links().reshape(-1)])
-    
+        # return np.concatenate([self.source_destination_map[source],
+        #                        self.source_destination_map[destination],
+        #                        self.network.get_all_optical_links().reshape(-1)])
+        # return self.code_nodes(source, destination)
+        return (source, destination)
 
-    def plot_reward(self): 
+
+    def plot_reward(self):
         import matplotlib.pyplot as plt
         plt.plot(self.reward_by_step, label='Reward by Step')
 
@@ -169,4 +190,3 @@ class Enviroment(gym.Env):
         plt.title('Reward by Episode')
         plt.grid(True)
         plt.show()
-
