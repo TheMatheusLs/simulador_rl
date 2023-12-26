@@ -153,7 +153,7 @@ class Enviroment(gym.Env):
         self.source = source
         self.destination = destination
 
-        return np.concatenate([self.source_destination_map[source], self.source_destination_map[destination], self.network.get_all_optical_links().reshape(-1)])
+        return np.concatenate([self.source_destination_map[source], self.source_destination_map[destination], self.network.get_all_optical_links().flatten()])
     
 
     def plot_reward(self): 
