@@ -1,5 +1,5 @@
 import numpy as np
-np.random.seed(42)
+#np.random.seed(42)
 
 from OpticalSimFasterEnv.Topology.NSFNet import NSFNet
 from OpticalSimFasterEnv.SpectrumAssignment import RSA_FirstFit, SAR_FistFit
