@@ -19,15 +19,15 @@ if __name__ == "__main__":
     stats_table = np.zeros((NBR_ACTIONS, NBR_STATES, NBR_STATS))
     gamma = 0.9
 
-    for r in range(500):
-        if r & 511 == 0:
+    for r in range(10000):
+        if r & 1023 == 0:
             print(f"Round {r:4d}")
         # # Reseta o ambiente
         st, _ = env.reset()
 
         action = np.random.randint(4)
-        runs, count, rewards, states_trail = 0, 0, [], []
-        for runs in range(10000):
+        rewards, states_trail = [], []
+        for runs in range(500):
             states_trail.append((st, action))
             st, reward, _, _, _ = env.step(action)
             rewards.append(reward)
