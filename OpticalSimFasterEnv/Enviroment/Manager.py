@@ -150,7 +150,7 @@ class Enviroment(gym.Env):
 
         self.last_request += 1
 
-        self.reward_episode = 2*self.isAvailableSlots - 1
+        self.reward_episode = int(self.isAvailableSlots)
 
         return self.get_observation(), self.reward_episode, \
             not self.isAvailableSlots, False, {}
