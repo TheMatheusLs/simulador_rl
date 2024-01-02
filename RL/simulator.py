@@ -1,14 +1,14 @@
 class EpisodicSimulator:
     def __init__(self, env, policy, episode_size,
-                 report_active=False, report_at=100000):
+                 report_active=False, report_every=100000):
         self.env, self.policy = env, policy
         self.episode_size = episode_size
-        self.report_active, self.report_at = report_active, report_at
+        self.report_active, self.report_every = report_active, report_every
 
     def run(self, nbr_runs):
         for r in range(nbr_runs):
             if self.report_active and \
-               r % self.report_at == 0:
+               r % self.report_every == 0:
                 print(f"Round {r:4d}")
 
             st, _ = self.env.reset()
@@ -46,5 +46,5 @@ if __name__ == "__main__":
 
     sim = EpisodicSimulator(MyEnvironment(), MyPolicy(),
                             episode_size=250,
-                            report_active=True, report_at=10000)
+                            report_active=True, report_every=10000)
     sim.run(100000)
