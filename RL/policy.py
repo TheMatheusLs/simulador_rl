@@ -173,35 +173,3 @@ if __name__ == "__main__":
     print(f"Action = {policy.action(0)}")
     print(f"Action = {policy.action(0)}")
     policy.update(0, 0, 1)
-
-
-
-
-
-
-    # class A:
-    #     def __init__(self):
-    #         self.a = 0
-    #         print("A.__init__()")
- 
-    # class B(A):
-    #     def __init__(self):
-    #         print("B.__init__()")
-    #         super().__init__()
-
-    #     def f(self):
-    #         self.a = 10
- 
-    # class C(A):
-    #     def __init__(self):
-    #         print("C.__init__()")
-    #         super().__init__()
-
-    #     def f2(self):
-    #         print(f"a is {self.a}")
-
-    # class D(B, C):
-    #     def __init__(self):
-    #         print("D.__init__()")
-    #         super().__init__()
-
