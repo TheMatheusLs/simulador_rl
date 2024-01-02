@@ -155,11 +155,9 @@ class Enviroment(gym.Env):
         return self.get_observation(), self.reward_episode, \
             not self.isAvailableSlots, False, {}
 
-    @staticmethod
     def code_nodes(src, dest):
-        return (src & 0xFF) + ((dest & 0xFF) << 8)
+        return src + dest*self.nbr_nodes
 
-    @staticmethod
     def decode_nodes(coded_nodes):
         return (coded_nodes & 0xFF, (coded_nodes >> 8) & 0xFF)
 
@@ -174,7 +172,7 @@ class Enviroment(gym.Env):
         #                        self.source_destination_map[destination],
         #                        self.network.get_all_optical_links().reshape(-1)])
         # return self.code_nodes(source, destination)
-        return (source, destination)
+        return code_nodes(source, destination)
 
 
     def plot_reward(self):
