@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import time
 
 from Ex3_5.Manager import Enviroment as Env_Ex3_5
 from OpticalSimFasterEnv.Enviroment.Manager import Enviroment as Env_Optical
@@ -10,7 +10,7 @@ from RL.policy import EquiprobablePolicy, \
 from RL.simulator import EpisodicSimulator
 
 # Some variables for configuration
-USE_OPTICAL_ENV, USE_SAR_ACTION = True, False
+USE_OPTICAL_ENV, USE_SAR_ACTION = True, True
 
 # A policy that uses equally likely actions and a table to store the
 # statistics
@@ -22,31 +22,45 @@ class Policy_Ex3_5(EpisodicTablePolicyUpdater,
         EquiprobablePolicy.__init__(self, nbr_states, nbr_actions)
 
 class Policy_Optical(EpisodicTablePolicyUpdater,
-                     FixedActionPolicy):
-    def __init__(self, nbr_states, nbr_actions, gamma, value):
+                     EquiprobablePolicy):
+    def __init__(self, nbr_states, nbr_actions, gamma):
         EpisodicTablePolicyUpdater.__init__(self, nbr_states,
                                             nbr_actions, gamma=0.9)
-        FixedActionPolicy.__init__(self, nbr_states, nbr_actions,
-                                   value)
+        EquiprobablePolicy.__init__(self, nbr_states, nbr_actions)
+
+blocks_list = []
+def store_blocks(run, step):
+    global blocks_list
+    blocks_list.append(step)
+
+blocks_list2 = {}
+def store_blocks2(run, step):
+    global blocks_list2
+    blocks_list2.setdefault(run, []).append(step)
 
 # Cria o ambiente de simulação e a executa
 if USE_OPTICAL_ENV:
     env = Env_Optical(network_load = 100, k_routes = 3)
     NBR_ACTIONS, NBR_STATES = 2, env.nbr_nodes**2
-    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 10, 30000, 1
-    policy = Policy_Optical(NBR_STATES, NBR_ACTIONS, gamma=0.9,
-                            value=SAR_ACTION if USE_SAR_ACTION else
-                            RSA_ACTION)
+    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 30, 100000, 10
+    policy = Policy_Optical(NBR_STATES, NBR_ACTIONS, gamma=0.9)
 else:
     NBR_ACTIONS, NBR_STATES = 4, 25
     NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 100000, 250, 10000
     env = Env_Ex3_5()
     policy = Policy_Ex3_5(NBR_STATES, NBR_ACTIONS, gamma=0.9)
 
-sim = EpisodicSimulator(env, policy, episode_size=EPISODE_SIZE,
-                        report_active=True,
-                        report_every=REPORT_EVERY)
-sim.run(NBR_RUNS)
+print(f"""*******************************
+Running simulation with:
+\tNbr of runs: {NBR_RUNS}
+\tEpisode size: {EPISODE_SIZE}
+*******************************""")
+start = time.time()
+EpisodicSimulator(env, policy, episode_size=EPISODE_SIZE,
+                  terminate_on_eoe=False, report_active=True,
+                  report_every=REPORT_EVERY,
+                  process_done_cb=store_blocks2).run(NBR_RUNS)
+print(f"Elapsed time: {time.time() - start}")
 
 # Report some statistics to match the figure shown in example 3.5
 stats_table = policy.stats
@@ -72,3 +86,36 @@ else:
                     for value, nbr, st, action in state_list))
 
     print(f"{(stats_table[:,:,0].sum(axis=1)/4).round(1).reshape((5, 5))}")
+
+if __name__ == "__main__":
+    blocks_list2_a = blocks_list2
+
+    import matplotlib.pyplot as plt
+
+    plt.hist([v for v, _, _, _ in state_list], bins=25)
+    plt.show()
+
+
+    print([len(l) for l in blocks_list2.values()])
+
+    blks = np.zeros(200000)
+    blks[np.array(blocks_list2[4])] = 1
+    plt.plot(np.convolve(blks, np.ones(150)))
+
+
+    _ = plt.hist(blocks_list2[2], bins=20)
+    plt.show()
+
+    lmx = np.array(blocks_list2[4])
+    lmx = lmx[2:] - lmx[1:-1]
+    _ = plt.hist(lmx, bins=40, range=(0, 500))
+    plt.show()
+
+    llx = np.array(list(zip(lmx[:-1], lmx[1:])))
+    plt.scatter(llx[:, 0], llx[:, 1])
+    plt.show()
+
+    lmn = np.array(blocks_list2[2])
+    lmn = lmn[2:] - lmn[1:-1]
+    _ = plt.hist(lmn, bins=40, range=(0, 1500))
+    plt.show()
