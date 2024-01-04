@@ -101,6 +101,11 @@ class Enviroment(gym.Env):
 
         return source, destination
 
+    def keep_or_remove(self, demand):
+        if demand.departure_time <= self.simulation_time:
+            demand.deallocate(self.network)
+            return False
+        return True
 
     def step(self, action):
 
@@ -108,15 +113,14 @@ class Enviroment(gym.Env):
 
         self.isAvailableSlots = False
 
-        # Remove as demandas que expiraram
-        for demand in self.list_of_demands:
-            if demand.departure_time <= self.simulation_time:
-                demand.deallocate(self.network)
-                self.list_of_demands.remove(demand)
-
         # Adiciona um incremento ao tempo de simulacao conforme a
         # carga da rede
         self.simulation_time += self.random_generator.exponential(1/self.network_load)
+
+        # Remove as demandas que expiraram
+        self.list_of_demands = \
+            [demand for demand in self.list_of_demands
+             if self.keep_or_remove(demand)]
 
         # Sorteia uma demanda de slots entre [2,3,6]
         demand_class = self.random_generator.choice([2,3,6])
@@ -130,7 +134,7 @@ class Enviroment(gym.Env):
         # Calcula o tempo de partida da demanda (tempo atual + tempo
         # de duração da demanda)
         departure_time = self.simulation_time + \
-            exponencial(1, np.random)
+            self.random_generator.exponential(1)
 
         # Verifica se o conjunto de slots é diferente de vazio
         if slots.size != 0:
@@ -144,7 +148,6 @@ class Enviroment(gym.Env):
 
             # Realiza a alocação dos slots na matriz de links
             self.network.allocate_slots(route, slots)
-
         else:
             self.isAvailableSlots = False
             self.total_number_of_blocks += 1
