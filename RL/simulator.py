@@ -1,25 +1,35 @@
 class EpisodicSimulator:
     def __init__(self, env, policy, episode_size,
-                 report_active=False, report_every=100000):
+                 report_active=False, report_every=100000,
+                 terminate_on_eoe=False,
+                 process_done_cb=lambda x, y: None):
         self.env, self.policy = env, policy
         self.episode_size = episode_size
         self.report_active, self.report_every = report_active, report_every
+        # The flag below indicates the run should terminate on
+        # EndOfEpisode (or, if the EoE doesn't happen, upon
+        # episode_size steps
+        self.terminate_on_eoe = terminate_on_eoe
+        self.process_done = process_done_cb
 
     def run(self, nbr_runs):
-        for r in range(nbr_runs):
+        for run in range(nbr_runs):
             if self.report_active and \
-               r % self.report_every == 0:
-                print(f"Round {r:4d}")
+               run % self.report_every == 0:
+                print(f"Round {run:4d}")
 
             st, _ = self.env.reset()
-
             action = self.policy.action(st)
             self.policy.reset()
-            for runs in range(self.episode_size):
+            for step in range(self.episode_size):
                 old_st = st
-                st, reward, _, _, _ = self.env.step(action)
+                st, reward, done, _, _ = self.env.step(action)
                 self.policy.update(old_st, action, reward)
                 action = self.policy.action(st)
+                if done:
+                    self.process_done(run, step)
+                    if self.terminate_on_eoe:
+                        break
 
             self.policy.final_update()
 
