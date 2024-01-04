@@ -30,11 +30,12 @@ class Demand:
         self.slots = []
 
 class Enviroment(gym.Env):
-    def __init__(self, network_load, k_routes, number_of_slots = 64) -> None:
+    def __init__(self, network_load, k_routes, number_of_slots = 64, penalty=-1000) -> None:
 
         self.number_of_slots = number_of_slots
         self.network_load = network_load
         self.k_routes = k_routes
+        self.penalty = penalty
 
         # Cria a topologia de rede NSFNet
         self.network = NSFNet(num_of_slots = number_of_slots)
@@ -42,10 +43,10 @@ class Enviroment(gym.Env):
         self.allRoutes = [[self.network.k_shortest_paths(origin, source, k_routes) for source in range(self.network.get_num_of_nodes())] for origin in range(self.network.get_num_of_nodes())]
 
         # Imprime todas as rotas possíveis
-        for i in range(self.network.get_num_of_nodes()):
-            for j in range(self.network.get_num_of_nodes()):
-                if i != j:
-                    print(f"Routes from {str(i).zfill(2)} to {str(j).zfill(2)}:", self.allRoutes[i][j])
+        # for i in range(self.network.get_num_of_nodes()):
+        #     for j in range(self.network.get_num_of_nodes()):
+        #         if i != j:
+        #             print(f"Routes from {str(i).zfill(2)} to {str(j).zfill(2)}:", self.allRoutes[i][j])
 
 
         self.nbr_nodes = self.network.get_num_of_nodes()
@@ -150,7 +151,8 @@ class Enviroment(gym.Env):
 
         self.last_request += 1
 
-        self.reward_episode = int(self.isAvailableSlots)
+        self.reward_episode = 1 if self.isAvailableSlots else\
+            self.penalty
 
         return self.get_observation(), self.reward_episode, \
             not self.isAvailableSlots, False, {}
