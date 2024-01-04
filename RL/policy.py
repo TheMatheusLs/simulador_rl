@@ -15,20 +15,29 @@ class Policy:
     def update(self, state, action, value):
         pass
 
-    def final_update(self, state, action, value):
+    def final_update(self):
         pass
 
 class FixedActionPolicy(Policy):
     def __init__(self, nbr_states, nbr_actions, action=0):
-        super().__init__(nbr_states, nbr_actions)
+        Policy.__init__(self, nbr_states, nbr_actions)
         self.fixed_action = action
 
     def action(self, state):
         return self.fixed_action
 
+class DeterministicPolicy(Policy):
+    def __init__(self, nbr_states, nbr_actions, actions):
+        Policy.__init__(self, nbr_states, nbr_actions)
+        self.actions = np.array([a for a in actions],
+                                dtype=np.int32)
+
+    def action(self, state):
+        return self.actions[state]
+
 class EquiprobablePolicy(Policy):
     def __init__(self, nbr_states, nbr_actions):
-        super().__init__(nbr_states, nbr_actions)
+        Policy.__init__(self, nbr_states, nbr_actions)
 
     def action(self, state):
         return random.randrange(self.nbr_actions)
@@ -36,9 +45,11 @@ class EquiprobablePolicy(Policy):
 class EpsilonPolicy(Policy):
     def __init__(self, nbr_states, nbr_actions, epsilon,
                  explorer, exploiter):
-        super().__init__(nbr_states, nbr_actions)
+        Policy.__init__(self, nbr_states, nbr_actions)
         self.epsilon = epsilon
         self.explorer, self.exploiter = explorer, exploiter
+        # Workaround to have easy access to the stats tables
+        self.stats = exploiter.stats
 
     def action(self, state):
         if random.random() < self.epsilon:
@@ -50,9 +61,9 @@ class EpsilonPolicy(Policy):
         self.exploiter.update(state, action, reward)
         self.explorer.update(state, action, reward)
 
-    def final_update(self, state, action, reward):
-        self.exploiter.final_update(state, action, reward)
-        self.explorer.final_update(state, action, reward)
+    def final_update(self):
+        self.exploiter.final_update()
+        self.explorer.final_update()
 
     def reset(self):
         self.exploiter.reset()
@@ -101,14 +112,18 @@ class EpisodicTablePolicy(Policy):
 
     def reset(self):
         self.state_trail, self.rewards = [], []
-        self.best_actions = np.zeros(self.nbr_states)
+        self.best_actions = np.zeros(self.nbr_states,
+                                     dtype=np.int32)
 
     def reset_stats(self):
         self.stats = np.zeros((self.nbr_states, self.nbr_actions, 2))
 
+    def internal_stats_update(self):
+        pass
+
 class EpisodicTablePolicyUpdater(EpisodicTablePolicy):
     def __init__(self, nbr_states, nbr_actions, gamma):
-        super().__init__(nbr_states, nbr_actions)
+        EpisodicTablePolicy.__init__(self, nbr_states, nbr_actions)
         self.gamma = gamma
 
     def update(self, state, action, reward):
@@ -125,18 +140,21 @@ class EpisodicTablePolicyUpdater(EpisodicTablePolicy):
                 (value - stats[st, action, 0])/stats[st, action, 1]
             stats[st, action, 0] = avg_value
 
-        EpisodicTablePolicy.best_actions = stats[:, :, 0].argmax(axis=1)
+        self.internal_stats_update()
 
 class EpisodicTablePolicyActor(EpisodicTablePolicy):
     def __init__(self, nbr_states, nbr_actions):
-        super().__init__(nbr_states, nbr_actions)
+        EpisodicTablePolicy.__init__(self, nbr_states, nbr_actions)
 
     def action(self, state):
         return self.best_actions[state]
 
+    def internal_stats_update(self):
+        self.best_actions = self.stats[:, :, 0].argmax(axis=1)
+
 class FreeRunningTablePolicy(Policy):
     def __init__(self, nbr_states, nbr_actions):
-        super().__init__(nbr_states, nbr_actions)
+        Policy.__init__(self, nbr_states, nbr_actions)
 
     def update(self, state, action, reward):
         pass
