@@ -11,26 +11,43 @@ from RL.policy import EquiprobablePolicy, DeterministicPolicy,\
 from RL.simulator import EpisodicSimulator
 
 # Some variables for configuration
-USE_OPTICAL_ENV, USE_SAR_ACTION = False, True
+USE_OPTICAL_ENV, USE_SAR_ACTION = True, True
+USE_DETERMINISTIC_POLICY = True
 
 # A policy that uses equally likely actions and a table to store the
 # statistics
-class Policy_Ex3_5(EpisodicTablePolicyUpdater,
-                   EpisodicTablePolicyActor):
-    def __init__(self, nbr_states, nbr_actions, gamma):
-        EpisodicTablePolicyUpdater.__init__(self, nbr_states,
-                                            nbr_actions, gamma)
-        EpisodicTablePolicyActor.__init__(self, nbr_states,
-                                          nbr_actions)
+if USE_DETERMINISTIC_POLICY:
+    class Policy_Optical(EpisodicTablePolicyUpdater,
+                         DeterministicPolicy):
+        def __init__(self, nbr_states, nbr_actions, gamma, actions):
+            EpisodicTablePolicyUpdater.__init__(self, nbr_states,
+                                                nbr_actions, gamma)
+            DeterministicPolicy.__init__(self, nbr_states,
+                                         nbr_actions, actions)
 
-class Policy_Optical(EpisodicTablePolicyUpdater,
-                     EpisodicTablePolicyActor):
-    def __init__(self, nbr_states, nbr_actions, gamma,
-                 epsilon, explorer, exploiter):
-        EpisodicTablePolicyUpdater.__init__(self, nbr_states,
-                                            nbr_actions, gamma)
-        EpisodicTablePolicyActor.__init__(self, nbr_states,
-                                          nbr_actions)
+    class Policy_Ex3_5(EpisodicTablePolicyUpdater,
+                       DeterministicPolicy):
+        def __init__(self, nbr_states, nbr_actions, gamma, actions):
+            EpisodicTablePolicyUpdater.__init__(self, nbr_states,
+                                                nbr_actions, gamma)
+            DeterministicPolicy.__init__(self, nbr_states,
+                                         nbr_actions, actions)
+else:
+    class Policy_Optical(EpisodicTablePolicyUpdater,
+                         EpisodicTablePolicyActor):
+        def __init__(self, nbr_states, nbr_actions, gamma):
+            EpisodicTablePolicyUpdater.__init__(self, nbr_states,
+                                                nbr_actions, gamma)
+            EpisodicTablePolicyActor.__init__(self, nbr_states,
+                                              nbr_actions)
+
+    class Policy_Ex3_5(EpisodicTablePolicyUpdater,
+                       EpisodicTablePolicyActor):
+        def __init__(self, nbr_states, nbr_actions, gamma):
+            EpisodicTablePolicyUpdater.__init__(self, nbr_states,
+                                                nbr_actions, gamma)
+            EpisodicTablePolicyActor.__init__(self, nbr_states,
+                                              nbr_actions)
 
 blocks_list = []
 def store_blocks(run, step):
@@ -46,21 +63,33 @@ def store_blocks2(run, step):
 if USE_OPTICAL_ENV:
     env = Env_Optical(network_load = 100, k_routes = 3)
     NBR_ACTIONS, NBR_STATES = 2, env.nbr_nodes**2
-    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 1, 10000, 10
-    explorer = EquiprobablePolicy(NBR_STATES, NBR_ACTIONS)
-    exploiter = Policy_Optical(NBR_STATES, NBR_ACTIONS, gamma=0.9)
-    policy = EpsilonPolicy(NBR_STATES, NBR_ACTIONS,
-                           epsilon=0.03, explorer=explorer,
-                           exploiter=exploiter)
+    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 5, 500000, 2
+    if USE_DETERMINISTIC_POLICY:
+        actions = [0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0]
+        # actions = np.ones(196)
+        policy = Policy_Optical(NBR_STATES, NBR_ACTIONS, gamma=0.9,
+                                actions=actions)
+    else:
+        explorer = EquiprobablePolicy(NBR_STATES, NBR_ACTIONS)
+        exploiter = Policy_Optical(NBR_STATES, NBR_ACTIONS, gamma=0.9)
+        policy = EpsilonPolicy(NBR_STATES, NBR_ACTIONS,
+                               epsilon=0.03, explorer=explorer,
+                               exploiter=exploiter)
 else:
     NBR_ACTIONS, NBR_STATES = 4, 25
-    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 10000, 1000, 10000
+    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 20000, 500, 10000
     env = Env_Ex3_5()
-    explorer = EquiprobablePolicy(NBR_STATES, NBR_ACTIONS)
-    exploiter = Policy_Ex3_5(NBR_STATES, NBR_ACTIONS, gamma=0.9)
-    policy = EpsilonPolicy(NBR_STATES, NBR_ACTIONS,
-                           epsilon=0.1, explorer=explorer,
-                           exploiter=exploiter)
+    if USE_DETERMINISTIC_POLICY:
+        actions = [3, 0, 0, 0, 0, 3, 1, 0, 0, 0, 3, 1, 0, 0, 0, 3, 1, 0, 0, 0, 3, 1, 0, 0, 0]
+        actions = [3, 3, 0, 0, 0, 3, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0]
+        policy = Policy_Ex3_5(NBR_STATES, NBR_ACTIONS, gamma=0.9,
+                              actions=actions)
+    else:
+        explorer = EquiprobablePolicy(NBR_STATES, NBR_ACTIONS)
+        exploiter = Policy_Ex3_5(NBR_STATES, NBR_ACTIONS, gamma=0.9)
+        policy = EpsilonPolicy(NBR_STATES, NBR_ACTIONS,
+                               epsilon=0.03, explorer=explorer,
+                               exploiter=exploiter)
 
 print(f"""*******************************
 Running simulation with:
