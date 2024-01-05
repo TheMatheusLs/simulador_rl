@@ -103,7 +103,7 @@ class AdaptiveEpsilonPolicy(EpsilonPolicy):
 
 class EpisodicTablePolicy(Policy):
     def __init__(self, nbr_states, nbr_actions):
-        super().__init__(nbr_states, nbr_actions)
+        Policy.__init__(self, nbr_states, nbr_actions)
 
         # Cria o array de estatísticas. O último índice é para
         # armazenar a média e o contador
@@ -112,11 +112,11 @@ class EpisodicTablePolicy(Policy):
 
     def reset(self):
         self.state_trail, self.rewards = [], []
-        self.best_actions = np.zeros(self.nbr_states,
-                                     dtype=np.int32)
 
     def reset_stats(self):
         self.stats = np.zeros((self.nbr_states, self.nbr_actions, 2))
+        self.best_actions = np.zeros(self.nbr_states,
+                                     dtype=np.int32)
 
     def internal_stats_update(self):
         pass
