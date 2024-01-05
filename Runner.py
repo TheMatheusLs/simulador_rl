@@ -5,28 +5,32 @@ from Ex3_5.Manager import Enviroment as Env_Ex3_5
 from OpticalSimFasterEnv.Enviroment.Manager import Enviroment as Env_Optical
 from OpticalSimFasterEnv.Enviroment.Manager import RSA_ACTION, SAR_ACTION
 
-from RL.policy import EquiprobablePolicy, \
-    EpisodicTablePolicyUpdater, FixedActionPolicy
+from RL.policy import EquiprobablePolicy, DeterministicPolicy,\
+    FixedActionPolicy, EpsilonPolicy, EpisodicTablePolicyUpdater,\
+    EpisodicTablePolicyActor
 from RL.simulator import EpisodicSimulator
 
 # Some variables for configuration
-USE_OPTICAL_ENV, USE_SAR_ACTION = True, True
+USE_OPTICAL_ENV, USE_SAR_ACTION = False, True
 
 # A policy that uses equally likely actions and a table to store the
 # statistics
 class Policy_Ex3_5(EpisodicTablePolicyUpdater,
-                   EquiprobablePolicy):
+                   EpisodicTablePolicyActor):
     def __init__(self, nbr_states, nbr_actions, gamma):
         EpisodicTablePolicyUpdater.__init__(self, nbr_states,
                                             nbr_actions, gamma)
-        EquiprobablePolicy.__init__(self, nbr_states, nbr_actions)
+        EpisodicTablePolicyActor.__init__(self, nbr_states,
+                                          nbr_actions)
 
 class Policy_Optical(EpisodicTablePolicyUpdater,
-                     EquiprobablePolicy):
-    def __init__(self, nbr_states, nbr_actions, gamma):
+                     EpisodicTablePolicyActor):
+    def __init__(self, nbr_states, nbr_actions, gamma,
+                 epsilon, explorer, exploiter):
         EpisodicTablePolicyUpdater.__init__(self, nbr_states,
-                                            nbr_actions, gamma=0.9)
-        EquiprobablePolicy.__init__(self, nbr_states, nbr_actions)
+                                            nbr_actions, gamma)
+        EpisodicTablePolicyActor.__init__(self, nbr_states,
+                                          nbr_actions)
 
 blocks_list = []
 def store_blocks(run, step):
@@ -42,13 +46,21 @@ def store_blocks2(run, step):
 if USE_OPTICAL_ENV:
     env = Env_Optical(network_load = 100, k_routes = 3)
     NBR_ACTIONS, NBR_STATES = 2, env.nbr_nodes**2
-    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 30, 100000, 10
-    policy = Policy_Optical(NBR_STATES, NBR_ACTIONS, gamma=0.9)
+    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 1, 10000, 10
+    explorer = EquiprobablePolicy(NBR_STATES, NBR_ACTIONS)
+    exploiter = Policy_Optical(NBR_STATES, NBR_ACTIONS, gamma=0.9)
+    policy = EpsilonPolicy(NBR_STATES, NBR_ACTIONS,
+                           epsilon=0.03, explorer=explorer,
+                           exploiter=exploiter)
 else:
     NBR_ACTIONS, NBR_STATES = 4, 25
-    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 100000, 250, 10000
+    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 10000, 1000, 10000
     env = Env_Ex3_5()
-    policy = Policy_Ex3_5(NBR_STATES, NBR_ACTIONS, gamma=0.9)
+    explorer = EquiprobablePolicy(NBR_STATES, NBR_ACTIONS)
+    exploiter = Policy_Ex3_5(NBR_STATES, NBR_ACTIONS, gamma=0.9)
+    policy = EpsilonPolicy(NBR_STATES, NBR_ACTIONS,
+                           epsilon=0.1, explorer=explorer,
+                           exploiter=exploiter)
 
 print(f"""*******************************
 Running simulation with:
@@ -85,7 +97,7 @@ else:
     print("\n".join(f"{st:2d} / {DIR_MAP[action]} ({int(nbr):3d}): {round(value, 3)}"
                     for value, nbr, st, action in state_list))
 
-    print(f"{(stats_table[:,:,0].sum(axis=1)/4).round(1).reshape((5, 5))}")
+    print(f"{(stats_table[:,:,0].sum(axis=1)/4).round(3).reshape((5, 5))}")
 
 if __name__ == "__main__":
     blocks_list2_a = blocks_list2
