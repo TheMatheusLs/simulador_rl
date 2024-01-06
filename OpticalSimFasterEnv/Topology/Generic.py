@@ -14,6 +14,8 @@ class Generic():
         
         self.graph = nx.Graph()
 
+        self.nbr_free_slots = np.zeros((num_of_nodes, num_of_nodes))
+
         # Adiciona os nós (representando os equipamentos)
         self.graph.add_nodes_from(range(self.num_of_nodes))
 
@@ -21,25 +23,21 @@ class Generic():
         self.links_map = {}
 
         for source, destination, length in lengths:
-
             # Adiciona os enlaces (representando as conexões) (source, destination, length)
             self.graph.add_edge(source, destination, weight=length)
-
+            self.links_map[(source, destination)] = self.num_of_links
             self.num_of_links += 1
 
-            self.links_map[(source, destination)] = self.num_of_links - 1
-
+            self.nbr_free_slots[(source, destination)] = num_of_slots
             # Adiciona os enlaces (representando as conexões) (destination, source, length) se for bidirecional
             if IS_BIDIRECTIONAL:
                 self.graph.add_edge(destination, source, weight=length)
-
+                self.links_map[(destination, source)] = self.num_of_links
                 self.num_of_links += 1
-
-                self.links_map[(destination, source)] = self.num_of_links - 1
 
         # Matriz de links (linhas) e slots (colunas)
         self.all_optical_links = np.zeros((self.num_of_links, self.num_of_slots), dtype=np.bool_)
-
+        self.nbr_free_slots = np.zeros((num_of_nodes, num_of_nodes))
 
     def __str__(self):
         return_text = "Links\t Slots\n"
@@ -106,15 +104,18 @@ class Generic():
         plt.title("Topology Generic")
         plt.show()
 
-
     def allocate_slots(self, route_path, slots):
 
         for source, destination in zip(route_path[:-1], route_path[1:]):
             self.all_optical_links[self.links_map[(source, destination)], slots] = True
 
+        self.nbr_free_slots[(source, destination)] -= len(slots)
+        return self.nbr_free_slots[(source, destination)]
     
     def deallocate_slots(self, route_path, slots):
 
         for source, destination in zip(route_path[:-1], route_path[1:]):
             self.all_optical_links[self.links_map[(source, destination)], slots] = False
 
+        self.nbr_free_slots[(source, destination)] += len(slots)
+        return self.nbr_free_slots[(source, destination)]
