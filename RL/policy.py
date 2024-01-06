@@ -12,7 +12,7 @@ class Policy:
     def action(self, state):
         return 0
 
-    def update(self, state, action, value):
+    def update(self, state, action, new_state, reward):
         pass
 
     def final_update(self):
@@ -57,9 +57,9 @@ class EpsilonPolicy(Policy):
         else:
             return self.exploiter.action(state)
 
-    def update(self, state, action, reward):
-        self.exploiter.update(state, action, reward)
-        self.explorer.update(state, action, reward)
+    def update(self, state, action, new_state, reward):
+        self.exploiter.update(state, action, new_state, reward)
+        self.explorer.update(state, action, new_state, reward)
 
     def final_update(self):
         self.exploiter.final_update()
@@ -126,7 +126,7 @@ class EpisodicTablePolicyUpdater(EpisodicTablePolicy):
         EpisodicTablePolicy.__init__(self, nbr_states, nbr_actions)
         self.gamma = gamma
 
-    def update(self, state, action, reward):
+    def update(self, state, action, new_state, reward):
         self.state_trail.append((state, action))
         self.rewards.append(reward)
 
@@ -152,12 +152,15 @@ class EpisodicTablePolicyActor(EpisodicTablePolicy):
     def internal_stats_update(self):
         self.best_actions = self.stats[:, :, 0].argmax(axis=1)
 
-class FreeRunningTablePolicy(Policy):
-    def __init__(self, nbr_states, nbr_actions):
-        Policy.__init__(self, nbr_states, nbr_actions)
+class QLearningTablePolicy(EpisodicTablePolicy):
+    def __init__(self, nbr_states, nbr_actions, gamma, alpha):
+        EpisodicTablePolicy.__init__(self, nbr_states, nbr_actions)
 
-    def update(self, state, action, reward):
-        pass
+    def update(self, state, action, new_state, reward):
+        self.stats[state, action, 1] += 1
+        self.stats[state, action, 0] += alpha*\
+            (reward +  gamma*self.stats[new_state, :, 0] - \
+             self.stats[state, action, 0])
 
 #        self.idx_map = dict(zip(range(self.nbr_actions),
 #                                [0]*self.nbr_actions))
@@ -182,7 +185,7 @@ if __name__ == "__main__":
 
     policy2 = MyPolicy(3, 4, 5, 0.9)
     print(f"Action is {policy2.action(0)}")
-    policy2.update(1, 2, 3)
+    policy2.update(1, 2, 3, 4)
     policy2.final_update()
 
     exploiter = MyPolicy(3, NBR_STATES, NBR_ACTIONS, 0.9)
@@ -190,4 +193,4 @@ if __name__ == "__main__":
                            exploiter=exploiter, explorer=policy)
     print(f"Action = {policy.action(0)}")
     print(f"Action = {policy.action(0)}")
-    policy.update(0, 0, 1)
+    policy.update(0, 0, 1, 2)
