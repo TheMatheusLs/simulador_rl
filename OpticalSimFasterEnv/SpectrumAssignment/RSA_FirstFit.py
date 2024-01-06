@@ -2,7 +2,11 @@ import numpy as np
 
 def find_slots(links: np.array, routes_path: list, demands: int) -> np.array:
 
-    # Executa o algoritmo First-Fit. Encontra o primeiro slot disponível para alocar a demanda e retorna o conjunto de slots. Se não houver slots disponíveis na primeira rota tenta na segunda e assim por diante. Se não houver slots disponíveis em nenhuma rota retorna um conjunto vazio.
+    # Executa o algoritmo First-Fit. Encontra o primeiro slot
+    # disponível para alocar a demanda e retorna o conjunto de
+    # slots. Se não houver slots disponíveis na primeira rota tenta na
+    # segunda e assim por diante. Se não houver slots disponíveis em
+    # nenhuma rota retorna um conjunto vazio.
 
     for route_path in routes_path:
 
@@ -14,4 +18,6 @@ def find_slots(links: np.array, routes_path: list, demands: int) -> np.array:
             if not availability_vector[i:i + demands].any():
                 return route_path, np.arange(i, i + demands)
 
-    return None, np.array([])
+    res = set([(s, d) for route in routes_path
+               for s, d in zip(route[:-1], route[1:])])
+    return res, np.array([])

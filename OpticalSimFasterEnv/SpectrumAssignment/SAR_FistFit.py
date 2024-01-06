@@ -13,5 +13,7 @@ def find_slots(links: np.array, routes_path: list, demands: int) -> np.array:
             # Sendo os slots disponíveis aqueles que são False, encontraremos a primeira sequência de False com tamanho igual a demanda
             if not availability_vector[slot: slot + demands].any():
                 return route_path, np.arange(slot, slot + demands)
-        
-    return None, np.array([])
+
+        res = set([(s, d) for route in routes_path
+               for s, d in zip(route[:-1], route[1:])])
+    return res, np.array([])
