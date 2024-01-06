@@ -1,4 +1,5 @@
 import numpy as np
+from collections import Counter
 #np.random.seed(42)
 
 from OpticalSimFasterEnv.Topology.NSFNet import NSFNet
@@ -8,12 +9,6 @@ RSA_ACTION, SAR_ACTION = 0, 1
 
 import gymnasium as gym
 from gymnasium import spaces
-
-from math import log10, exp
-
-def exponencial(mean_rate: float, rand):
-    random = rand.random()
-    return (-1 / mean_rate) * (log10(random)/log10(exp(1)))
 
 class Demand:
     def __init__(self, demand_ID: int, demand_class: int, slots: list[int], route, simulation_time: float, departure_time: float):
@@ -26,16 +21,21 @@ class Demand:
         self.departure_time = departure_time
 
     def deallocate(self, network):
-        network.deallocate_slots(self.route, self.slots)
+        slots_remaining = network.deallocate_slots(self.route, self.slots)
         self.slots = []
 
 class Enviroment(gym.Env):
-    def __init__(self, network_load, k_routes, number_of_slots = 64, penalty=-1000) -> None:
-
+    def __init__(self, network_load, k_routes,
+                 number_of_slots = 64, penalty=-1000,
+                 seed=None,
+                 is_dynamic_network=True) -> None:
         self.number_of_slots = number_of_slots
         self.network_load = network_load
         self.k_routes = k_routes
         self.penalty = penalty
+        self.is_dynamic_network = is_dynamic_network
+        self.seed = seed
+        self.busy_links = Counter()
 
         # Cria a topologia de rede NSFNet
         self.network = NSFNet(num_of_slots = number_of_slots)
@@ -51,7 +51,7 @@ class Enviroment(gym.Env):
 
         self.nbr_nodes = self.network.get_num_of_nodes()
 
-        self.random_generator = np.random.default_rng(42)
+        self.random_generator = np.random.default_rng(self.seed)
 
         # Define o espaço de ações para a saída do algoritmo. Como
         # nosso estado de ação é 0 e 1. Usamos o Discrete(2) para
@@ -62,7 +62,7 @@ class Enviroment(gym.Env):
 
         # O ATRIBUTO ABAIXO APARENTEMENTE NÃO ESTÁ SENDO USADO NO
         # MOMENTO, E POR ISSO ESTÁ COMENTADO
-        # self.observation_space = spaces.MultiBinary(self.nbr_nodes * 2 + self.number_of_slots * 42, seed=42)
+        # self.observation_space = spaces.MultiBinary(self.nbr_nodes * 2 + self.number_of_slots * 42)
 
         # Cria um mapa de codificação para os estados de origem e
         # destino em one hot encoding
@@ -71,7 +71,7 @@ class Enviroment(gym.Env):
         self.reward_episode = 0
         self.reward_by_step = []
 
-    def reset(self, seed = 42, options = None):
+    def reset(self, options = None):
         self.reward_by_step.append(self.reward_episode)
         self.reward_episode = 0
 
@@ -103,12 +103,11 @@ class Enviroment(gym.Env):
 
     def keep_or_remove(self, demand):
         if demand.departure_time <= self.simulation_time:
-            demand.deallocate(self.network)
+            slots_remaining = demand.deallocate(self.network)
             return False
         return True
 
     def step(self, action):
-
         source, destination = self.source, self.destination
 
         self.isAvailableSlots = False
@@ -117,13 +116,14 @@ class Enviroment(gym.Env):
         # carga da rede
         self.simulation_time += self.random_generator.exponential(1/self.network_load)
 
-        # Remove as demandas que expiraram
-        self.list_of_demands = \
-            [demand for demand in self.list_of_demands
-             if self.keep_or_remove(demand)]
+        # Remove as demandas que expiraram, no caso dinâmico
+        if self.is_dynamic_network:
+            self.list_of_demands = \
+                [demand for demand in self.list_of_demands
+                 if self.keep_or_remove(demand)]
 
         # Sorteia uma demanda de slots entre [2,3,6]
-        demand_class = self.random_generator.choice([2,3,6])
+        demand_class = self.random_generator.choice([3, 6, 11])
 
         # Executa o First-Fit para o algoritmo RSA
         if action == 0:
@@ -142,15 +142,18 @@ class Enviroment(gym.Env):
 
             # Cria a demanda e seus atributos para serem utilizados
             # na alocação
-            demand = Demand(self.last_request, demand_class, slots, route, self.simulation_time, departure_time)
+            demand = Demand(self.last_request, demand_class, slots,
+                            route, self.simulation_time,
+                            departure_time)
 
             self.list_of_demands.append(demand)
 
             # Realiza a alocação dos slots na matriz de links
-            self.network.allocate_slots(route, slots)
+            slots_remaining = self.network.allocate_slots(route, slots)
         else:
             self.isAvailableSlots = False
             self.total_number_of_blocks += 1
+            self.busy_links.update(route)
 
         self.last_request += 1
 
@@ -161,10 +164,11 @@ class Enviroment(gym.Env):
             not self.isAvailableSlots, False, {}
 
     def code_nodes(self, src, dest):
-        return src + dest*self.nbr_nodes
+        return dest + src*self.nbr_nodes
 
     def decode_nodes(self, coded_nodes):
-        return (coded_nodes & 0xFF, (coded_nodes >> 8) & 0xFF)
+        return (coded_nodes//self.nbr_nodes,
+                coded_nodes % self.nbr_nodes)
 
     def get_observation(self):
 
