@@ -61,12 +61,15 @@ def store_blocks2(run, step):
 
 # Cria o ambiente de simulação e a executa
 if USE_OPTICAL_ENV:
-    env = Env_Optical(network_load = 100, k_routes = 3)
+    env = Env_Optical(network_load = 130, k_routes = 3,
+                      number_of_slots = 128)
     NBR_ACTIONS, NBR_STATES = 2, env.nbr_nodes**2
-    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 5, 500000, 2
+    NBR_RUNS, EPISODE_SIZE, REPORT_EVERY = 2, 100000, 2
+    def eor_cb(policy, run, **kw):
+        policy
     if USE_DETERMINISTIC_POLICY:
-        actions = [0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0]
-        # actions = np.ones(196)
+        actions = np.ones(196)
+        # actions = np.array([1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1], dtype=np.int32)
         policy = Policy_Optical(NBR_STATES, NBR_ACTIONS, gamma=0.9,
                                 actions=actions)
     else:
@@ -114,11 +117,11 @@ state_list = [(stats_table[st, action, 0],
 state_list.sort(reverse=True)
 if USE_OPTICAL_ENV:
     ACTION_MAP = {0: "RSA", 1: "SAR"}
-    print("\n".join(f"{st % env.nbr_nodes:2d} - {st // env.nbr_nodes:2d} / ({ACTION_MAP[action]})\
+    print("\n".join(f"{st // env.nbr_nodes:2d} - {st % env.nbr_nodes:2d} / ({ACTION_MAP[action]})\
 ({int(nbr):5d}): {value}"
                     for value, nbr, st, action in state_list[:30]))
     print()
-    print("\n".join(f"{st % env.nbr_nodes:2d} - {st // env.nbr_nodes:2d} / ({ACTION_MAP[action]})\
+    print("\n".join(f"{st // env.nbr_nodes:2d} - {st % env.nbr_nodes:2d} / ({ACTION_MAP[action]})\
 ({int(nbr):5d}): {value}"
                     for value, nbr, st, action in state_list[-30:]))
 else:
@@ -129,6 +132,9 @@ else:
     print(f"{(stats_table[:,:,0].sum(axis=1)/4).round(3).reshape((5, 5))}")
 
 if __name__ == "__main__":
+    policy_1 = policy
+    blocks_list2_1 = blocks_list2
+
     blocks_list2_a = blocks_list2
 
     import matplotlib.pyplot as plt
