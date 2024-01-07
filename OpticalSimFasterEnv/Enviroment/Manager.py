@@ -52,6 +52,8 @@ class Enviroment(gym.Env):
 
         self.random_generator = np.random.default_rng(42)
 
+        self.demands_class = [3,6,11]
+
         # Define o espaço de ações para a saída do algoritmo. Como
         # nosso estado de ação é 0 e 1. Usamos o Discrete(2) para
         # definir o espaço de ações.
@@ -118,13 +120,13 @@ class Enviroment(gym.Env):
         self.simulation_time += self.random_generator.exponential(1/self.network_load)
 
         # Sorteia uma demanda de slots entre [2,3,6]
-        demand_class = self.random_generator.choice([2,3,6])
+        demand_class = self.random_generator.choice(self.demands_class)
 
         # Executa o First-Fit para o algoritmo RSA
         if action == 0:
-            route, slots = RSA_FirstFit.find_slots(self.network.get_all_optical_links(), self.allRoutes[source][destination], demand_class)
+            route, slots = RSA_FirstFit.find_slots(self.network, self.allRoutes[source][destination], demand_class)
         elif action == 1:
-            route, slots = SAR_FistFit.find_slots( self.network.get_all_optical_links(), self.allRoutes[source][destination], demand_class)
+            route, slots = SAR_FistFit.find_slots( self.network, self.allRoutes[source][destination], demand_class)
 
         # Calcula o tempo de partida da demanda (tempo atual + tempo
         # de duração da demanda)

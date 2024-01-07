@@ -109,12 +109,20 @@ class Generic():
 
     def allocate_slots(self, route_path, slots):
 
-        for source, destination in zip(route_path[:-1], route_path[1:]):
-            self.all_optical_links[self.links_map[(source, destination)], slots] = True
+        # Retorna o índice dos links na matriz de links conforme a origem e destino da rota
+        route_links = [self.links_map[route_path[i], route_path[i + 1]] for i in range(len(route_path) - 1)]
+
+        for link in route_links:
+            for slot in slots:
+                self.all_optical_links[link, slot] = True
 
     
     def deallocate_slots(self, route_path, slots):
 
-        for source, destination in zip(route_path[:-1], route_path[1:]):
-            self.all_optical_links[self.links_map[(source, destination)], slots] = False
+        # Retorna o índice dos links na matriz de links conforme a origem e destino da rota
+        route_links = [self.links_map[route_path[i], route_path[i + 1]] for i in range(len(route_path) - 1)]
+
+        for link in route_links:
+            for slot in slots:
+                self.all_optical_links[link, slot] = False
 
